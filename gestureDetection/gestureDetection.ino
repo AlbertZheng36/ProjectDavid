@@ -18,6 +18,7 @@
  *
  *In each execution loop, we first acquire the accel readings (need to determine freq (John's job)) and ADC reading of flex sensor
  *use switch cases to see which state we should be in, if there is a state change, we go into that state
+ *Albert's task: set up different states and action in those states(now just use distinguishable LED pattern so we can debug. Use serial.print for prelimanary testing but not in final testing)
  *
  */
 
