@@ -21,16 +21,87 @@
  *Albert's task: set up different states and action in those states(now just use distinguishable LED pattern so we can debug. Use serial.print for prelimanary testing but not in final testing)
  *
  */
+ 
+/*notes on unit conversion*/
+
+/*in order to save on expensive floating point conversion, we will use ADC read value instead,
+ * this is more challenging in thinking about these quantities intuitively so here is a guideline
+ * as to what accel reading means and what voltage ADC readout means.
+ * Accel reading: signed 16-bit value for a full range of +- 4g. Example: at rest, reading is x=0, y=0, z=8000
+ * flex sensor reading: ADC maps 0-5v to 0 - 1023, 
+ * at rest, index reading is 562, middle reading 587, ring reading 600
+ * at fist, index reading 766, middle reading 759, ring reading 796
+ * choose middle value 650 to compare and determine if finers are relaxed or curled up
+ * 
+ * data acquisition rate: 781Hz loop speed without any computation, most time spent in writing 
+ * to accelerometer. 
+ */
+
 
 #include<Wire.h>
-/*catapult throw now is a distinct state, later we want to have drive/turn and throw capability */
-enum states = {idle, forward_drive, backward_drive, left_turn_in_place, right_turn_in_place, catapult_throw};
-void setup() {
-  // put your setup code here, to run once:
-
+#define relax(a) (((a)<(650))? (true):(false)) //whehter a finger is in relax state
+enum state {forward_drive, backup, left_turn, right_turn, catapult_throw};
+const int MPU=0x68;  // I2C address of the MPU-6050
+int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
+bool indexRelax, middleRelax, ringRelax;
+void setup(){
+  Wire.begin();
+  Wire.beginTransmission(MPU);
+  Wire.write(0x6B);  // PWR_MGMT_1 register
+  Wire.write(0);     // set to zero (wakes up the MPU-6050)
+  Wire.endTransmission(true);
+  Wire.beginTransmission(MPU);
+  Wire.write(0x1C);  // Accel_config register
+  Wire.write(0x08);  // set to 08 (full_range +-4g)
+  Wire.endTransmission(true);
+  Wire.beginTransmission(MPU);
+  Wire.write(0x24);  // Accel_config register
+  Wire.write(0x09);  // set to 08 (full_range +-4g)
+  Wire.endTransmission(true); 
+  pinMode(7,OUTPUT);
+  Serial.begin(9600);
 }
+void loop(){
+  /*data acquisition code*/
+  /*data acquired: AcX, AcY, AcZ, index, middle and ring Finger reading.*/
+  digitalWrite(7,HIGH);
+  Wire.beginTransmission(MPU);
+  Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU,6,true);  // request a total of 14 registers
+  digitalWrite(7, LOW);
+  AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)     
+  AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
+  AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+  int indexFingerReading = analogRead(A0);
+  indexRelax = relax(indexFingerReading);
+  int middleFingerReading = analogRead(A1);
+  middleRelax = relax(middleFingerReading);
+  int ringFingerReading = analogRead(A2);
+  ringRelax = relax(ringFingerReading);
+  /* data acquisition code end*/
+  
+  /*
+  Tmp=Wire.read()<<8|Wire.read();  // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
+  GyX=Wire.read()<<8|Wire.read();  // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
+  GyY=Wire.read()<<8|Wire.read();  // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
+  GyZ=Wire.read()<<8|Wire.read();  // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
+  */
 
-void loop() {
-  // put your main code here, to run repeatedly:
-
+  /*
+  Serial.print("index reading = "); Serial.print(indexFingerReading);
+  Serial.print(" |middle reading = "); Serial.print(middleFingerReading);
+  Serial.print(" |ring reading = "); Serial.print(ringFingerReading);
+  Serial.print(" |AcX = "); Serial.print(AcX);
+  Serial.print(" | AcY = "); Serial.print(AcY);
+  Serial.print(" | AcZ = "); Serial.println(AcZ);
+  */
+  
+  /*
+  Serial.print(" | Tmp = "); Serial.print(Tmp/340.00+36.53);  //equation for temperature in degrees C from datasheet
+  Serial.print(" | GyX = "); Serial.print(GyX);
+  Serial.print(" | GyY = "); Serial.print(GyY);
+  Serial.print(" | GyZ = "); Serial.println(GyZ);
+  */
+  //delay(333);
 }
