@@ -39,27 +39,35 @@
  */
 
 
-#include<Wire.h>
+#include "I2Cdev.h"
+#include "MPU6050_6Axis_MotionApps20.h"
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+    #include "Wire.h"
+#endif
 #define relax(a) (((a)<(650))? (true):(false)) //whehter a finger is in relax state
-enum state {forward_drive, backup, left_turn, right_turn, catapult_throw}; //catapult_throw should be an interrupt, not a state
+MPU6050 mpu;
+int8_t threshold;
 const int MPU=0x68;  // I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 bool indexRelax, middleRelax, ringRelax;
+
+void ISR_interrupt(){
+  /*upon an interrupt, send catapult throw command*/
+  /*right now, we can turn on LED to indicate this event*/
+  digitalWrite(13,HIGH);
+}
 void setup(){
   Wire.begin();
-  Wire.beginTransmission(MPU);
-  Wire.write(0x6B);  // PWR_MGMT_1 register
-  Wire.write(0);     // set to zero (wakes up the MPU-6050)
-  Wire.endTransmission(true);
-  Wire.beginTransmission(MPU);
-  Wire.write(0x1C);  // Accel_config register
-  Wire.write(0x08);  // set to 08 (full_range +-4g)
-  Wire.endTransmission(true);
-  Wire.beginTransmission(MPU);
-  Wire.write(0x24);  // Accel_config register
-  Wire.write(0x09);  // set to 08 (full_range +-4g)
-  Wire.endTransmission(true); 
+  mpu.initialize();
+  mpu.dmpInitialize();
+  mpu.setIntMotionEnabled(1);
+  mpu.setMotionDetectionThreshold(2);
+  mpu.setMotionDetectionDuration(1);
   pinMode(7,OUTPUT);
+  pinMode(13, OUTPUT);
+  digitalWrite(13,LOW);
+  pinMode(2,OUTPUT); 
+  attachInterrupt(digitalPinToInterrupt(2),ISR_interrupt,FALLING);
   Serial.begin(9600);
 }
 void loop(){
@@ -69,7 +77,7 @@ void loop(){
   Wire.beginTransmission(MPU);
   Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
   Wire.endTransmission(false);
-  Wire.requestFrom(MPU,6,true);  // request a total of 14 registers
+  Wire.requestFrom(MPU,6,true);  // request a total of 6 registers
   digitalWrite(7, LOW);
   AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)     
   AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
