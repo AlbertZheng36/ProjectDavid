@@ -49,7 +49,11 @@ MPU6050 mpu;
 int8_t threshold;
 const int MPU=0x68;  // I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
+int16_t accel_X_reading = 0; //lpf of AcX
 bool indexRelax, middleRelax, ringRelax;
+enum state {idle,forward_drive, backup, left_turn,right_turn};
+uint8_t turning_speed; //in forward drive and backup mode, turning_speed is set to 0
+                       //in turning state, turning speed is a function of accel reading
 
 void ISR_interrupt(){
   /*upon an interrupt, send catapult throw command*/
@@ -57,6 +61,7 @@ void ISR_interrupt(){
   digitalWrite(13,HIGH);
 }
 void setup(){
+  state gestureState = idle;
   Wire.begin();
   mpu.initialize();
   mpu.dmpInitialize();
@@ -81,6 +86,8 @@ void loop(){
   AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)     
   AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
   AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+  accel_X_reading = (int16_t)0.99 * accel_X_reading + (int16_t)0.01 * AcX; //LPF here, check if this works since float is involved
+  
   int indexFingerReading = analogRead(A0);
   indexRelax = relax(indexFingerReading);
   int middleFingerReading = analogRead(A1);
@@ -88,6 +95,29 @@ void loop(){
   int ringFingerReading = analogRead(A2);
   ringRelax = relax(ringFingerReading);
   /* data acquisition code end*/
+
+  /*forward and backup take precedence over turns*/
+  if (indexRelax && middleRelax && ringRelax && abs(accel_X_reading) < 500){
+    //now we use AcX as the only reference to turning angle, 
+    //might be more useful to calculate angle instead but this is what we have now
+    state gestureState = idle;
+    turning_speed = 0; 
+  }else if (!indexRelax && !middleRelax && !ringRelax){
+    state gestureState = backup;
+    turning_speed = 0;
+  }else if (indexRelax && middleRelax && !ringRelax){
+    state gestureState = forward_drive;
+    turning_speed = 0;
+  }else if (accel_X_reading > 500){
+    state gestureState = left_turn;
+    turning_speed = (int8_t)accel_X_reading;//extract top 8 bits of accel_X_reading
+  }else if (accel_X_reading < -500){
+    state gestureState = right_turn;
+    turning_speed = (int8_t)accel_X_reading;//extract top 8 bits of accel_X_reading
+  }
+
+  /*Xbee send packets to inform*/
+  //send_info(gestureState,turningSpeed);
   
   /*
   Tmp=Wire.read()<<8|Wire.read();  // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
