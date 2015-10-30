@@ -66,8 +66,7 @@ void setup(){
   pinMode(7,OUTPUT);
   pinMode(13, OUTPUT);
   digitalWrite(13,LOW);
-  pinMode(2,OUTPUT); 
-  attachInterrupt(digitalPinToInterrupt(2),ISR_interrupt,FALLING);
+  attachInterrupt(0,ISR_interrupt,FALLING);
   Serial.begin(9600);
 }
 void loop(){
