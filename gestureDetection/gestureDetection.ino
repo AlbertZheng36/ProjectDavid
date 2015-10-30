@@ -50,7 +50,7 @@ int8_t threshold;
 const int MPU=0x68;  // I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 int16_t accel_X_reading = 0; //lpf of AcX
-bool indexRelax, middleRelax, ringRelax;
+bool indexRelax, middleRelax, ringRelax, should_catapult;
 enum state {idle,forward_drive, backup, left_turn,right_turn};
 state gestureState = idle;
 uint8_t turning_speed; //in forward drive and backup mode, turning_speed is set to 0
@@ -61,6 +61,7 @@ void ISR_interrupt(){
   /*upon an interrupt, send catapult throw command*/
   /*right now, we can turn on LED to indicate this event*/
   digitalWrite(13,HIGH);
+  should_catapult = true;
   x++;
 }
 void setup(){
@@ -88,7 +89,7 @@ void loop(){
   AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)     
   AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
   AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
-  accel_X_reading = 0.99 * accel_X_reading + 0.01 * AcX; //LPF here, check if this works since float is involved
+  accel_X_reading = 0.99 * accel_X_reading + 0.01 * AcX; 
   //Serial.print("accel_X_reading is ");Serial.println(accel_X_reading);
   //Serial.print("number of interrupts is ");Serial.println(x);
   int indexFingerReading = analogRead(A0);
@@ -123,7 +124,8 @@ void loop(){
   //Serial.print("turningSpeed is "); Serial.println(turning_speed);
   //delay(333);
   /*Xbee send packets to inform*/
-  //send_info(gestureState,turningSpeed);
+  //send_info(gestureState,turningSpeed,should_catapult);
+  //should_catapult = false; 
 
 
   /*
