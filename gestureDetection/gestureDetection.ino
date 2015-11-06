@@ -74,7 +74,7 @@ void setup(){
   pinMode(7,OUTPUT);
   pinMode(13, OUTPUT);
   digitalWrite(13,LOW);
-  attachInterrupt(0,ISR_interrupt,FALLING);
+  attachInterrupt(0,ISR_interrupt,FALLING); // Used 0 here because digitalPinToInterrupt(2) returns 0
   Serial.begin(9600);
 }
 void loop(){
