@@ -64,6 +64,15 @@ void ISR_interrupt(){
   should_catapult = true;
   x++;
 }
+
+void send_info(state gestureState,uint8_t turning_speed, bool should_catapult){
+    // Sample sent message: 1 30 0#
+    String gestureString = String(gestureState);
+    String turnSpeed = String(turning_speed);
+    String shot = String(should_catapult);
+    Serial.print(turnSpeed + " " + gestureString + " " + shot + "#");
+  
+}
 void setup(){
   Wire.begin();
   mpu.initialize();
@@ -122,9 +131,9 @@ void loop(){
 
   //Serial.print("state is "); Serial.println(gestureState);
   //Serial.print("turningSpeed is "); Serial.println(turning_speed);
-  //delay(333);
+  delay(333);
   /*Xbee send packets to inform*/
-  //send_info(gestureState,turningSpeed,should_catapult);
+  send_info(gestureState,turning_speed,should_catapult);
   //should_catapult = false; 
 
 
