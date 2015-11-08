@@ -60,7 +60,7 @@ void receive_info() {
      pos++;
      if (command1.substring(i,i+1) == " "){
         string1 = command1.substring(pos-i,i-1);
-        
+          
      }
      
     }
