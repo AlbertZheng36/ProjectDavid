@@ -20,6 +20,14 @@ int target_angle = 0;
 bool flipper = false;
 int Kp = 3;
 
+// Infomation from glove
+enum state {idle,forward_drive, backup, left_turn,right_turn};
+state gesture_state = idle;
+uint8_t turning_speed;
+bool should_catapult;
+
+
+
 void setup(){
   Wire.begin();
   mpu.initialize();
@@ -36,6 +44,42 @@ void setup(){
   pinMode(test, OUTPUT);
   Serial.begin(9600);
 }
+
+void receive_info() {
+   String command1 =  Serial.readStringUntil('#');
+   String combine_string = NULL;
+   String string1;
+   String string2;
+   String string3;
+   int int_command1;
+   int int_command2;
+   int int_command3;
+   int pos = 0;
+   int pre_pos = 0;
+   for (int i = 0; i < string.length(command1);i++){
+     pos++;
+     if (command1.substring(i,i+1) == " "){
+        string1 = command1.substring(pos-i,i-1);
+        
+     }
+     
+    }
+    
+
+   
+   //int int_command1 = command1.toInt();
+   //String command2 = Serial.readStringUntil(' ');
+   //int int_command2 = command2.toInt();
+   //String command3 = Serial.readStringUntil('#');
+   //int int_command3 = command3.toInt();
+   //Serial.println("Command: ");
+   //Serial.println(int_command1);
+   //Serial.println(int_command2);
+   //Serial.println(int_command3);
+   
+  
+}
+
 void motorControl(int pwm1, int pwm2, int dir1, int dir2) {
   int p1, p2;
   if (pwm1 >= 255) {p1 = 255;}
@@ -76,6 +120,9 @@ void motorControl(int pwm1, int pwm2, int dir1, int dir2) {
 }
 
 void loop(){
+  while(Serial.available()>0){
+    receive_info();
+    }
   flipper = !flipper;
   if (flipper) {digitalWrite(test, HIGH);}
   else {digitalWrite(test, LOW);} 
