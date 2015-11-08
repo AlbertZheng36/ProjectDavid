@@ -23,7 +23,7 @@ int Kp = 3;
 // Infomation from glove
 enum state {idle,forward_drive, backup, left_turn,right_turn};
 state gesture_state = idle;
-uint8_t turning_speed;
+int turning_speed;
 bool should_catapult;
 
 
@@ -46,24 +46,22 @@ void setup(){
 }
 
 void receive_info() {
+  int intState;
    String command1 =  Serial.readStringUntil('#');
-   String combine_string = NULL;
-   String string1;
-   String string2;
-   String string3;
-   int int_command1;
-   int int_command2;
-   int int_command3;
-   int pos = 0;
-   int pre_pos = 0;
-   for (int i = 0; i < string.length(command1);i++){
-     pos++;
-     if (command1.substring(i,i+1) == " "){
-        string1 = command1.substring(pos-i,i-1);
-          
-     } 
-     
-    }
+   char command[30];
+   command1.toCharArray(command, 30);
+   char *parseChar;
+   parseChar = strtok(command, " ");
+   
+   intState = atoi(parseChar);
+   //todo map interger state to enum
+   parseChar = strtok(NULL, " ");
+   turning_speed = atoi(parseChar);
+   parseChar = strtok(NULL, " ");
+   should_catapult = (atoi(parseChar) > 0);
+   Serial.println(command1);
+   Serial.println(command);
+   
     
 
    
