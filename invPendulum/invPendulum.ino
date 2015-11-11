@@ -1,13 +1,14 @@
-#include "I2Cdev.h"
-#include "MPU6050_6Axis_MotionApps20.h"
-#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-    #include "Wire.h"
-#endif
+//#include "I2Cdev.h"
+//#include "MPU6050_6Axis_MotionApps20.h"
+//#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+//    #include "Wire.h"
+//#endif
 
-MPU6050 mpu;
-const int MPU=0x68;  // I2C address of the MPU-6050
-int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
-int16_t accel_X_reading = 0; //lpf of AcX
+//MPU6050 mpu;
+//const int MPU=0x68;  // I2C address of the MPU-6050
+//int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
+//int16_t accel_X_reading = 0; //lpf of AcX
+double AcX, AcY, AcZ;
 int enA = 6;
 int in1 = 4;
 int in2 = 5;
@@ -21,12 +22,12 @@ bool flipper = false;
 int Kp = 3;
 
 void setup(){
-  Wire.begin();
-  mpu.initialize();
-  mpu.dmpInitialize();
-  mpu.setIntMotionEnabled(1);
-  mpu.setMotionDetectionThreshold(2);
-  mpu.setMotionDetectionDuration(1);
+  //Wire.begin();
+  //mpu.initialize();
+  //mpu.dmpInitialize();
+  //mpu.setIntMotionEnabled(1);
+  //mpu.setMotionDetectionThreshold(2);
+  //mpu.setMotionDetectionDuration(1);
   pinMode(in1, OUTPUT);
   pinMode(in2, OUTPUT);
   pinMode(in3, OUTPUT);
@@ -79,20 +80,23 @@ void loop(){
   flipper = !flipper;
   if (flipper) {digitalWrite(test, HIGH);}
   else {digitalWrite(test, LOW);} 
-  Wire.beginTransmission(MPU);
-  Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
-  Wire.endTransmission(false);
-  Wire.requestFrom(MPU,6,true);  // request a total of 6 registers
-  AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)     
-  AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
-  AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
-  //Serial.print("accel_X_reading is ");Serial.println(AcX);
-  //Serial.print("accel_Y_reading is ");Serial.println(AcY);
-  //Serial.print("accel_Z_reading is ");Serial.println(AcZ);
+  //Wire.beginTransmission(MPU);
+  //Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
+  //Wire.endTransmission(false);
+  //Wire.requestFrom(MPU,6,true);  // request a total of 6 registers
+  //AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)     
+  //AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
+  //AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+  AcX = (analogRead(A5)-342)/68.0;
+  AcY = (analogRead(A4)-341)/67.0;
+  AcZ = (analogRead(A3)-350)/70.0;
+  Serial.print("  accel_X_reading is ");Serial.print(AcX);
+  Serial.print("  accel_Y_reading is ");Serial.print(AcY);
+  Serial.print("  accel_Z_reading is ");Serial.print(AcZ);
   //Serial.println(round(atan2(AcZ, AcY)/3.14*180));
-  current_angle = round(atan2(AcZ, AcY)/3.14*180);
+  current_angle = round(atan2(AcZ, AcX)/3.14*180);
   int error = current_angle - target_angle;
-  //Serial.print("error=");Serial.println(error);
+  Serial.print("  error=");Serial.println(error);
   if (error > 0) {
     motorControl(Kp * error, Kp * error, 1, 1);
   } else {
