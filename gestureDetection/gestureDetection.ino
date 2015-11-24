@@ -90,7 +90,7 @@ void loop(){
   AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
   AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
   accel_X_reading = 0.99 * accel_X_reading + 0.01 * AcX; 
-  //Serial.print("accel_X_reading is ");Serial.println(accel_X_reading);
+  Serial.print("accel_X_reading is ");Serial.println(accel_X_reading);
   //Serial.print("number of interrupts is ");Serial.println(x);
   int indexFingerReading = analogRead(A0);
   indexRelax = relax(indexFingerReading);
