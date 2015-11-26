@@ -46,21 +46,20 @@ void setup(){
 }
 
 void receive_info() {
-  int intState;
    String command1 =  Serial.readStringUntil('#');
    char command[30];
    command1.toCharArray(command, 30);
    char *parseChar;
    parseChar = strtok(command, " ");
    
-   intState = atoi(parseChar);
+   gesture_state = state(atoi(parseChar));
    //todo map interger state to enum
    parseChar = strtok(NULL, " ");
    turning_speed = atoi(parseChar);
    parseChar = strtok(NULL, " ");
    should_catapult = (atoi(parseChar) > 0);
    Serial.println(command1);
-   Serial.println(command);
+   Serial.println(gesture_state);
    
     
 
