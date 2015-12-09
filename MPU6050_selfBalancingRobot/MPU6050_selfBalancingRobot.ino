@@ -17,6 +17,7 @@
 
 #include <Wire.h>
 #include <Kalman.h> // Source: https://github.com/TKJElectronics/KalmanFilter
+#include <DueTimer.h>
 
 #define RESTRICT_PITCH // Comment out to restrict roll to ±90deg instead - please read: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf
 
@@ -46,11 +47,11 @@ int enB = 11;
 int dirB = 13;
 int test = 6;
 double current_angle = 0;
-double target_angle = 2.8;
+double target_angle = 6;
 int moving_factor = 0;
 double Kp = 45;
-double Kd = 225;
-double Ki = 0.45;
+double Kd = 270;
+double Ki = 0.15;
 int integrated_error;
 int p1, p2;
 double robot_angle;
@@ -58,6 +59,112 @@ double last_error = 0;
 int control_decision = 0;
 double error = 0;
 double delta_error = 0;
+
+//================================ don't see this section ========================//
+// volatile interrupt data
+volatile double motor_speed = 0;
+volatile long last_time = 0;
+volatile long this_time = 0;
+volatile bool rising_trend = true;
+volatile int A_trend_first = 1;
+double last_motor_speed = 0;
+
+void enA_rise_ISR1() {
+  this_time = micros();
+  motor_speed = double(281.846 / (this_time - last_time));
+  last_time = this_time;
+  if (!rising_trend) {
+    rising_trend = true;
+    A_trend_first = 1;
+  }
+}
+
+void enB_rise_ISR1() {
+  this_time = micros();
+  motor_speed = double(281.846 / (this_time - last_time));
+  last_time = this_time;
+  if (!rising_trend) {
+    rising_trend = true;
+    A_trend_first = -1;
+  }
+}
+
+void enA_fall_ISR1() {
+  this_time = micros();
+  motor_speed = double(281.846 / (this_time - last_time));
+  last_time = this_time;
+  if (rising_trend) {
+    rising_trend = false;
+    A_trend_first = 1;
+  }
+}
+
+void enB_fall_ISR1() {
+  this_time = micros();
+  motor_speed = double(281.846 / (this_time - last_time));
+  last_time = this_time;
+  if (rising_trend) {
+    rising_trend = false;
+    A_trend_first = -1;
+  }
+}
+
+void timeOut1Handler() {
+  if (micros() - last_time > 5000) motor_speed = 0;
+}
+
+volatile double motor_speed2 = 0;
+volatile long last_time2 = 0;
+volatile long this_time2 = 0;
+volatile bool rising_trend2 = true;
+volatile int A_trend_first2 = 1;
+double last_motor_speed2 = 0;
+
+void enA_rise_ISR2() {
+  this_time2 = micros();
+  motor_speed2 = double(281.846 / (this_time2 - last_time2));
+  last_time2 = this_time2;
+  if (!rising_trend2) {
+    rising_trend2 = true;
+    A_trend_first2 = 1;
+  }
+}
+
+void enB_rise_ISR2() {
+  this_time2 = micros();
+  motor_speed2 = double(281.846 / (this_time2 - last_time2));
+  last_time2 = this_time2;
+  if (!rising_trend2) {
+    rising_trend2 = true;
+    A_trend_first2 = -1;
+  }
+}
+
+void enA_fall_ISR2() {
+  this_time2 = micros();
+  motor_speed2 = double(281.846 / (this_time2 - last_time2));
+  last_time2 = this_time2;
+  if (rising_trend2) {
+    rising_trend2 = false;
+    A_trend_first2 = 1;
+  }
+}
+
+void enB_fall_ISR2() {
+  this_time2 = micros();
+  motor_speed2 = double(281.846 / (this_time2 - last_time2));
+  last_time2 = this_time2;
+  if (rising_trend2) {
+    rising_trend2 = false;
+    A_trend_first2 = -1;
+  }
+}
+
+void timeOut2Handler() {
+  if (micros() - last_time2 > 5000) motor_speed2 = 0;
+}
+
+// ========================================= don't see above section =======================================//
 
 
 void setup() {
@@ -74,6 +181,17 @@ void setup() {
     delayMicroseconds(3);
   }
   pinMode(21, INPUT);
+  pinMode(5, OUTPUT);
+  Timer.getAvailable().attachInterrupt(timeOut1Handler).start(1000);
+  attachInterrupt(digitalPinToInterrupt(50), enA_rise_ISR1, RISING);
+  attachInterrupt(digitalPinToInterrupt(51), enA_fall_ISR1, FALLING);
+  attachInterrupt(digitalPinToInterrupt(52), enB_rise_ISR1, RISING);
+  attachInterrupt(digitalPinToInterrupt(53), enB_fall_ISR1, FALLING);
+  Timer.getAvailable().attachInterrupt(timeOut2Handler).start(1000);
+  attachInterrupt(digitalPinToInterrupt(22), enA_rise_ISR2, RISING);
+  attachInterrupt(digitalPinToInterrupt(23), enA_fall_ISR2, FALLING);
+  attachInterrupt(digitalPinToInterrupt(24), enB_rise_ISR2, RISING);
+  attachInterrupt(digitalPinToInterrupt(25), enB_fall_ISR2, FALLING);
   Wire.begin();
 
   i2cData[0] = 7; // Set the sample rate to 1000Hz - 8kHz/(7+1) = 1000Hz
@@ -149,6 +267,11 @@ void motorControl(int pwm1, int pwm2, int dir1, int dir2) {
 }
 
 void loop() {
+  digitalWrite(5, LOW);
+  Serial.print(motor_speed * A_trend_first);
+  Serial.print(' ');
+  Serial.println(motor_speed2 * A_trend_first2);
+  digitalWrite(5, HIGH);
   /* Update all the values */
   while (i2cRead(0x3B, i2cData, 14));
   accX = ((i2cData[0] << 8) | i2cData[1]);
@@ -265,8 +388,7 @@ void loop() {
 
   double temperature = (double)tempRaw / 340.0 + 36.53;
   Serial.print(temperature); Serial.print("\t");
-#endif
-
   Serial.print("\r\n");
-  delay(2);
+#endif
+  //delay(2);
 }
