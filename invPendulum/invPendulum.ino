@@ -42,24 +42,45 @@ void setup(){
   pinMode(enA, OUTPUT);
   pinMode(enB, OUTPUT);
   pinMode(test, OUTPUT);
-  Serial.begin(9600);
+  Serial.begin(115200);
 }
 
 void receive_info() {
    String command1 =  Serial.readStringUntil('#');
    char command[30];
    command1.toCharArray(command, 30);
-   char *parseChar;
-   parseChar = strtok(command, " ");
+   char *parseChar1; // For state
+   char *parseChar2; // For turning_speed
+   char *parseChar3; // For catapult
+   char *parseChar4; // For the last null
+   parseChar1 = strtok(command, " ");
+   parseChar2 = strtok(NULL, " ");
+   parseChar3 = strtok(NULL, " ");
+   parseChar4 = strtok(NULL, " ");
+   /* Integrety checking */
+   int cur_state = atoi(parseChar1) - 1;
+   int cur_speed = atoi(parseChar2);
+   int cur_cata = atoi(parseChar3) - 1;
+   if (cur_state < 0 || cur_state > (right_turn + 1)) {
+    Serial.println("Fail state");
+    return;
+   }
+   if (cur_cata < 0 || cur_cata > 1) {
+    Serial.println("Fail cata");
+    return;
+   }
+   if (!parseChar2 || !parseChar3 || parseChar4) {
+    Serial.println("Fail token number");
+    return;
+   }
    
-   gesture_state = state(atoi(parseChar));
-   //todo map interger state to enum
-   parseChar = strtok(NULL, " ");
-   turning_speed = atoi(parseChar);
-   parseChar = strtok(NULL, " ");
-   should_catapult = (atoi(parseChar) > 0);
+   gesture_state = (state)cur_state;
+   turning_speed = cur_speed;
+   should_catapult = (cur_cata > 0);
    Serial.println(command1);
    Serial.println(gesture_state);
+   Serial.println(turning_speed);
+   Serial.println(should_catapult);
    
     
 
