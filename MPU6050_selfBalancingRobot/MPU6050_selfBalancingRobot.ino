@@ -24,8 +24,8 @@ Kalman kalmanX; // Create the Kalman instances
 Kalman kalmanY;
 
 /* IMU Data */
-double accX, accY, accZ;
-double gyroX, gyroY, gyroZ;
+int16_t accX, accY, accZ;
+int16_t gyroX, gyroY, gyroZ;
 int16_t tempRaw;
 
 double gyroXangle, gyroYangle; // Angle calculate using the gyro only
@@ -61,13 +61,20 @@ double delta_error = 0;
 
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
+  pinMode(21, OUTPUT);
+  pinMode(12, OUTPUT);
+  pinMode(13, OUTPUT);
+  pinMode(10, OUTPUT);
+  pinMode(11, OUTPUT);
+  for (int i = 0; i < 8; i++) {
+    digitalWrite(21, HIGH);
+    delayMicroseconds(3);
+    digitalWrite(21, LOW);
+    delayMicroseconds(3);
+  }
+  pinMode(21, INPUT);
   Wire.begin();
-#if ARDUINO >= 157
-  Wire.setClock(400000UL); // Set I2C frequency to 400kHz
-#else
-  TWBR = ((F_CPU / 400000UL) - 16) / 2; // Set I2C frequency to 400kHz
-#endif
 
   i2cData[0] = 7; // Set the sample rate to 1000Hz - 8kHz/(7+1) = 1000Hz
   i2cData[1] = 0x00; // Disable FSYNC and set 260 Hz Acc filtering, 256 Hz Gyro filtering, 8 KHz sampling
@@ -236,7 +243,7 @@ void loop() {
   if (integrated_error < -255) integrated_error = -255;
   delta_error = error - last_error;
   control_decision = int(Kp*error+Kd*delta_error+Ki*integrated_error);
-  //Serial.print(control_decision); Serial.print("\t");
+  Serial.println(control_decision); Serial.print("\t");
   if (control_decision > 0){
     motorControl(control_decision, control_decision,1,1);
     }else{
