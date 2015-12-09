@@ -51,7 +51,7 @@ const int MPU=0x68;  // I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 int16_t accel_X_reading = 0; //lpf of AcX
 bool indexRelax, middleRelax, ringRelax, should_catapult;
-enum state {idle,forward_drive, backup, left_turn,right_turn};
+enum state {idle,forward_drive, backup, left_turn,right_turn}; 
 state gestureState = idle;
 uint8_t turning_speed; //in forward drive and backup mode, turning_speed is set to 0
                        //in turning state, turning speed is a function of accel reading
@@ -64,6 +64,16 @@ void ISR_interrupt(){
   should_catapult = true;
   x++;
 }
+
+void send_info(uint8_t turning_speed, bool should_catapult){
+    // Sample sent message: 1 30 1#
+    // These "+1"s are for integrety checking. Ask Albert for details
+    String gestureString = String(gestureState + 1);
+    String turnSpeed = String(turning_speed);
+    String shot = String(int(should_catapult) + 1);
+    Serial.print(gestureString + " " + turnSpeed + " " + shot + "#");
+}
+
 void setup(){
   Wire.begin();
   mpu.initialize();
@@ -75,7 +85,7 @@ void setup(){
   pinMode(13, OUTPUT);
   digitalWrite(13,LOW);
   attachInterrupt(0,ISR_interrupt,FALLING); // Used 0 here because digitalPinToInterrupt(2) returns 0
-  Serial.begin(9600);
+  Serial.begin(115200);
 }
 void loop(){
   /*data acquisition code*/
@@ -122,9 +132,9 @@ void loop(){
 
   //Serial.print("state is "); Serial.println(gestureState);
   //Serial.print("turningSpeed is "); Serial.println(turning_speed);
-  //delay(333);
+  delay(333);
   /*Xbee send packets to inform*/
-  //send_info(gestureState,turningSpeed,should_catapult);
+  send_info(turning_speed,should_catapult);
   //should_catapult = false; 
 
 

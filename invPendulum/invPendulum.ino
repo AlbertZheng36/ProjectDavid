@@ -21,6 +21,14 @@ int target_angle = 0;
 bool flipper = false;
 int Kp = 3;
 
+// Infomation from glove
+enum state {idle,forward_drive, backup, left_turn,right_turn};
+state gesture_state = idle;
+int turning_speed;
+bool should_catapult;
+
+
+
 void setup(){
   //Wire.begin();
   //mpu.initialize();
@@ -35,8 +43,62 @@ void setup(){
   pinMode(enA, OUTPUT);
   pinMode(enB, OUTPUT);
   pinMode(test, OUTPUT);
-  Serial.begin(9600);
+  Serial.begin(115200);
 }
+
+void receive_info() {
+   String command1 =  Serial.readStringUntil('#');
+   char command[30];
+   command1.toCharArray(command, 30);
+   char *parseChar1; // For state
+   char *parseChar2; // For turning_speed
+   char *parseChar3; // For catapult
+   char *parseChar4; // For the last null
+   parseChar1 = strtok(command, " ");
+   parseChar2 = strtok(NULL, " ");
+   parseChar3 = strtok(NULL, " ");
+   parseChar4 = strtok(NULL, " ");
+   /* Integrety checking */
+   int cur_state = atoi(parseChar1) - 1;
+   int cur_speed = atoi(parseChar2);
+   int cur_cata = atoi(parseChar3) - 1;
+   if (cur_state < 0 || cur_state > (right_turn + 1)) {
+    Serial.println("Fail state");
+    return;
+   }
+   if (cur_cata < 0 || cur_cata > 1) {
+    Serial.println("Fail cata");
+    return;
+   }
+   if (!parseChar2 || !parseChar3 || parseChar4) {
+    Serial.println("Fail token number");
+    return;
+   }
+   
+   gesture_state = (state)cur_state;
+   turning_speed = cur_speed;
+   should_catapult = (cur_cata > 0);
+   Serial.println(command1);
+   Serial.println(gesture_state);
+   Serial.println(turning_speed);
+   Serial.println(should_catapult);
+   
+    
+
+   
+   //int int_command1 = command1.toInt();
+   //String command2 = Serial.readStringUntil(' ');
+   //int int_command2 = command2.toInt();
+   //String command3 = Serial.readStringUntil('#');
+   //int int_command3 = command3.toInt();
+   //Serial.println("Command: ");
+   //Serial.println(int_command1);
+   //Serial.println(int_command2);
+   //Serial.println(int_command3);
+   
+  
+}
+
 void motorControl(int pwm1, int pwm2, int dir1, int dir2) {
   int p1, p2;
   if (pwm1 >= 255) {p1 = 255;}
@@ -77,6 +139,9 @@ void motorControl(int pwm1, int pwm2, int dir1, int dir2) {
 }
 
 void loop(){
+  while(Serial.available()>0){
+    receive_info();
+    }
   flipper = !flipper;
   if (flipper) {digitalWrite(test, HIGH);}
   else {digitalWrite(test, LOW);} 
