@@ -36,13 +36,7 @@ void setup(){
   //mpu.setIntMotionEnabled(1);
   //mpu.setMotionDetectionThreshold(2);
   //mpu.setMotionDetectionDuration(1);
-  pinMode(in1, OUTPUT);
-  pinMode(in2, OUTPUT);
-  pinMode(in3, OUTPUT);
-  pinMode(in4, OUTPUT);
-  pinMode(enA, OUTPUT);
-  pinMode(enB, OUTPUT);
-  pinMode(test, OUTPUT);
+  
   Serial.begin(115200);
 }
 
@@ -141,33 +135,35 @@ void motorControl(int pwm1, int pwm2, int dir1, int dir2) {
 void loop(){
   while(Serial.available()>0){
     receive_info();
+    Serial.print("has serial");
     }
-  flipper = !flipper;
-  if (flipper) {digitalWrite(test, HIGH);}
-  else {digitalWrite(test, LOW);} 
-  //Wire.beginTransmission(MPU);
-  //Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
-  //Wire.endTransmission(false);
-  //Wire.requestFrom(MPU,6,true);  // request a total of 6 registers
-  //AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)     
-  //AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
-  //AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
-  //Calibration of Ax, Ay, and Az
-  AcX = (analogRead(A5)-342)/68.0;
-  //AcY = (analogRead(A4)-341)/67.0;
-  AcZ = (analogRead(A3)-350)/70.0;
-  //Serial.print("  accel_X_reading is ");Serial.print(AcX);
-  // Don't use y,  y is not reliable 
-  //Serial.print("  accel_Y_reading is ");Serial.print(AcY);
-  //Serial.print("  accel_Z_reading is ");Serial.print(AcZ);
-  //Serial.println(round(atan2(AcZ, AcY)/3.14*180));
-  current_angle = round(atan2(AcX, AcZ)/3.14*180);
-  int error = current_angle - target_angle;
-  //Serial.print("  error=");Serial.println(error);
-  if (error > 0) {
-    motorControl(Kp * error, Kp * error, 1, 1);
-  } else {
-    motorControl(- Kp * error, - Kp * error, 2, 2);
-  }
-  //delay(20);
+  Serial.print("#\n");
+//  flipper = !flipper;
+//  if (flipper) {digitalWrite(test, HIGH);}
+//  else {digitalWrite(test, LOW);} 
+//  //Wire.beginTransmission(MPU);
+//  //Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
+//  //Wire.endTransmission(false);
+//  //Wire.requestFrom(MPU,6,true);  // request a total of 6 registers
+//  //AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)     
+//  //AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
+//  //AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+//  //Calibration of Ax, Ay, and Az
+//  AcX = (analogRead(A5)-342)/68.0;
+//  //AcY = (analogRead(A4)-341)/67.0;
+//  AcZ = (analogRead(A3)-350)/70.0;
+//  //Serial.print("  accel_X_reading is ");Serial.print(AcX);
+//  // Don't use y,  y is not reliable 
+//  //Serial.print("  accel_Y_reading is ");Serial.print(AcY);
+//  //Serial.print("  accel_Z_reading is ");Serial.print(AcZ);
+//  //Serial.println(round(atan2(AcZ, AcY)/3.14*180));
+//  current_angle = round(atan2(AcX, AcZ)/3.14*180);
+//  int error = current_angle - target_angle;
+//  //Serial.print("  error=");Serial.println(error);
+//  if (error > 0) {
+//    motorControl(Kp * error, Kp * error, 1, 1);
+//  } else {
+//    motorControl(- Kp * error, - Kp * error, 2, 2);
+//  }
+delay(200);
 }
