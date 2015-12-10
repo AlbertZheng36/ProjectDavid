@@ -160,5 +160,5 @@ void loop(){
   Serial.print(" | GyY = "); Serial.print(GyY);
   Serial.print(" | GyZ = "); Serial.println(GyZ);
   */
-  //delay(333);
+  delay(100);
 }
