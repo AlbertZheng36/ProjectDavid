@@ -51,7 +51,7 @@ const int MPU=0x68;  // I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 int16_t accel_X_reading = 0; //lpf of AcX
 bool indexRelax, middleRelax, ringRelax, should_catapult;
-enum state {idle,forward_drive, backup, left_turn,right_turn}; 
+enum state {idle,catapult,forward_drive, backup, left_turn,right_turn}; 
 state gestureState = idle;
 uint8_t turning_speed; //in forward drive and backup mode, turning_speed is set to 0
                        //in turning state, turning speed is a function of accel reading
@@ -66,12 +66,16 @@ void ISR_interrupt(){
 }
 
 void send_info(uint8_t turning_speed, bool should_catapult){
-    // Sample sent message: 1 30 1#
-    // These "+1"s are for integrety checking. Ask Albert for details
-    String gestureString = String(gestureState + 1);
-    String turnSpeed = String(turning_speed);
-    String shot = String(int(should_catapult) + 1);
-    Serial.print(gestureString + " " + turnSpeed + " " + shot + "#");
+    // Sample sent message: 1
+    int command;
+    if (should_catapult) {
+      command = catapult;
+      should_catapult = false;
+    } else {
+      command = gestureState;
+    }
+    // This "+1" are for integrity checking. Ask Albert for details.
+    Serial.print(command + 1);
 }
 
 void setup(){
