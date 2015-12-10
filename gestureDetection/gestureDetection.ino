@@ -65,7 +65,7 @@ void ISR_interrupt(){
   x++;
 }
 
-void send_info(uint8_t turning_speed, bool should_catapult){
+void send_info(){
     // Sample sent message: 1
     int command;
     if (should_catapult) {
@@ -138,8 +138,7 @@ void loop(){
   //Serial.print("turningSpeed is "); Serial.println(turning_speed);
   delay(333);
   /*Xbee send packets to inform*/
-  send_info(turning_speed,should_catapult);
-  //should_catapult = false; 
+  send_info();
 
 
   /*
@@ -164,5 +163,4 @@ void loop(){
   Serial.print(" | GyY = "); Serial.print(GyY);
   Serial.print(" | GyZ = "); Serial.println(GyZ);
   */
-  delay(100);
 }

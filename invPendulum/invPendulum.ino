@@ -23,9 +23,7 @@ int Kp = 3;
 
 // Infomation from glove
 enum state {idle,catapult,forward_drive, backup, left_turn,right_turn};
-state gesture_state = idle;
-int turning_speed;
-bool should_catapult;
+state command = idle;
 
 
 
@@ -41,14 +39,14 @@ void setup(){
 }
 
 void receive_info() {
-  int command = Serial.read() - 49;
+  int raw_command = Serial.read() - 49;
   // Integrity checking
-  if (command < idle || command > right_turn) {
+  if (raw_command < idle || raw_command > right_turn) {
     Serial.print("Fail state");
     return;
   }
-  gesture_state = (state)command;
-  Serial.print(gesture_state);
+  command = (state)raw_command;
+  Serial.print(command);
 }
 
 void motorControl(int pwm1, int pwm2, int dir1, int dir2) {
