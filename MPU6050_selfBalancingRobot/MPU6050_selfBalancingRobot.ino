@@ -1,81 +1,66 @@
+/* Copyright (C) 2012 Kristian Lauszus, TKJ Electronics. All rights reserved.
+
+ This software may be distributed and modified under the terms of the GNU
+ General Public License version 2 (GPL2) as published by the Free Software
+ Foundation and appearing in the file GPL2.TXT included in the packaging of
+ this file. Please note that GPL2 Section 2[b] requires that all works based
+ on this software must also be made publicly available under the terms of
+ the GPL2 ("Copyleft").
+
+ Contact information
+ -------------------
+
+ Kristian Lauszus, TKJ Electronics
+ Web      :  http://www.tkjelectronics.com
+ e-mail   :  kristianl@tkjelectronics.com
+ */
+
 #include <Wire.h>
 #include <Kalman.h> // Source: https://github.com/TKJElectronics/KalmanFilter
 #include <DueTimer.h>
+
+#define RESTRICT_PITCH // Comment out to restrict roll to ±90deg instead - please read: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf
+
 Kalman kalmanX; // Create the Kalman instances
 Kalman kalmanY;
 
-// Sensor definitions
+/* IMU Data */
 int16_t accX, accY, accZ;
 int16_t gyroX, gyroY, gyroZ;
 int16_t tempRaw;
+
 double gyroXangle, gyroYangle; // Angle calculate using the gyro only
 double compAngleX, compAngleY; // Calculated angle using a complementary filter
 double kalAngleX, kalAngleY; // Calculated angle using a Kalman filter
+
 uint32_t timer;
 uint8_t i2cData[14]; // Buffer for I2C data
 
-// Pin definitions
+// TODO: Make calibration routine
+
+// Motor1 direction 12 and speed is 10;
+// Motor2 direction 13 and speed is 11;
+
 int enA = 10;
 int dirA = 12;
 int enB = 11;
 int dirB = 13;
 int test = 6;
-
-// angle PID control definitions
 double current_angle = 0;
-<<<<<<< HEAD
-double target_angle = 7;
-=======
-double target_angle = 6.5;
->>>>>>> Bob's_branch
-double error = 0;
-double last_error = 0;
-double delta_error = 0;
-double integrated_error = 0;
-double Kp = 25;
-double Kd = 350;
-double Ki = 0.5;
-
-// speed PID control definitions
-double current_speed = 0;
-double target_speed = 0;
-double speed_error = 0;
-double last_speed_error = 0;
-double delta_speed_error = 0;
-double speed_error_sum = 0;
-double sp_Kp = 5;
-double sp_Kd = 0.5;
-double sp_Ki = 0;
-<<<<<<< HEAD
-double starting_bias = 7;
-=======
-double starting_bias = 6.5;
->>>>>>> Bob's_branch
-
-// other definitions
+double target_angle = 6;
+int moving_factor = 0;
+double Kp = 45;
+double Kd = 270;
+double Ki = 0.15;
+int integrated_error;
 int p1, p2;
 double robot_angle;
+double last_error = 0;
 int control_decision = 0;
-<<<<<<< HEAD
+double error = 0;
+double delta_error = 0;
 
-
-//info
-enum state {idle,forward_drive, backup, left_turn,right_turn};
-state gesture_state = idle;
-int turning_speed;
-bool should_catapult;
-=======
-double factor1 = 1;
-double factor2 = 1;
-bool toggle = false;
-
-// receive info
-enum state {idle,forward, backup, left_turn,right_turn};
-state gesture_state = idle;
-state command = idle;
->>>>>>> Bob's_branch
-
-//========================================== don't see this section ===========================================//
+//================================ don't see this section ========================//
 // volatile interrupt data
 volatile double motor_speed = 0;
 volatile long last_time = 0;
@@ -178,82 +163,12 @@ void enB_fall_ISR2() {
 void timeOut2Handler() {
   if (micros() - last_time2 > 5000) motor_speed2 = 0;
 }
-<<<<<<< HEAD
 
 // ========================================= don't see above section =======================================//
 
-void receive_info() {
-   String command1 =  Serial.readStringUntil('#');
-   Serial.print("after somdthing");
-   char command[30];
-   command1.toCharArray(command, 30);
-   char *parseChar1; // For state
-   char *parseChar2; // For turning_speed
-   char *parseChar3; // For catapult
-   char *parseChar4; // For the last null
-   parseChar1 = strtok(command, " ");
-   parseChar2 = strtok(NULL, " ");
-   parseChar3 = strtok(NULL, " ");
-   parseChar4 = strtok(NULL, " ");
-   /* Integrety checking */
-   int cur_state = atoi(parseChar1) - 1;
-   int cur_speed = atoi(parseChar2);
-   int cur_cata = atoi(parseChar3) - 1;
-   
-   if (cur_state < 0 || cur_state > (right_turn + 1)) {
-    //Serial.println("Fail state");
-    return;
-   }
-   if (cur_cata < 0 || cur_cata > 1) {
-    //Serial.println("Fail cata");
-    return;
-   }
-   if (!parseChar2 || !parseChar3 || parseChar4) {
-    //Serial.println("Fail token number");
-    return;
-   }
-   
-   gesture_state = (state)cur_state;
-   turning_speed = cur_speed;
-   should_catapult = (cur_cata > 0);
-   //Serial.println(command1);
-   //Serial.println(gesture_state);
-   //Serial.println(turning_speed);
-   //Serial.println(should_catapult);
-   
-    
 
-   
-   //int int_command1 = command1.toInt();
-   //String command2 = Serial.readStringUntil(' ');
-   //int int_command2 = command2.toInt();
-   //String command3 = Serial.readStringUntil('#');
-   //int int_command3 = command3.toInt();
-   //Serial.println("Command: ");
-   //Serial.println(int_command1);
-   //Serial.println(int_command2);
-   //Serial.println(int_command3);
-   
-  
-}
-=======
-// ========================================= don't see above section =======================================//
-
-void receive_info() {
-  int raw_command = Serial.read() - 49;
-  // Integrity checking
-  if (raw_command < idle || raw_command > right_turn) {
-    Serial.print("Fail state");
-    return;
-  }
-  command = (state)raw_command;
-  Serial.print(command);
-}
-
->>>>>>> Bob's_branch
 void setup() {
   Serial.begin(115200);
-  digitalWrite(8,LOW);
   pinMode(21, OUTPUT);
   pinMode(12, OUTPUT);
   pinMode(13, OUTPUT);
@@ -278,31 +193,46 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(24), enB_rise_ISR2, RISING);
   attachInterrupt(digitalPinToInterrupt(25), enB_fall_ISR2, FALLING);
   Wire.begin();
+
   i2cData[0] = 7; // Set the sample rate to 1000Hz - 8kHz/(7+1) = 1000Hz
   i2cData[1] = 0x00; // Disable FSYNC and set 260 Hz Acc filtering, 256 Hz Gyro filtering, 8 KHz sampling
   i2cData[2] = 0x00; // Set Gyro Full Scale Range to ±250deg/s
   i2cData[3] = 0x00; // Set Accelerometer Full Scale Range to ±2g
   while (i2cWrite(0x19, i2cData, 4, false)); // Write to all four registers at once
   while (i2cWrite(0x6B, 0x01, true)); // PLL with X axis gyroscope reference and disable sleep mode
+
   while (i2cRead(0x75, i2cData, 1));
   if (i2cData[0] != 0x68) { // Read "WHO_AM_I" register
     Serial.print(F("Error reading sensor"));
     while (1);
   }
+
   delay(100); // Wait for sensor to stabilize
+
   /* Set kalman and gyro starting angle */
   while (i2cRead(0x3B, i2cData, 6));
   accX = (i2cData[0] << 8) | i2cData[1];
   accY = (i2cData[2] << 8) | i2cData[3];
   accZ = (i2cData[4] << 8) | i2cData[5];
+
+  // Source: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf eq. 25 and eq. 26
+  // atan2 outputs the value of -π to π (radians) - see http://en.wikipedia.org/wiki/Atan2
+  // It is then converted from radians to degrees
+#ifdef RESTRICT_PITCH // Eq. 25 and 26
   double roll  = atan2(accY, accZ) * RAD_TO_DEG;
   double pitch = atan(-accX / sqrt(accY * accY + accZ * accZ)) * RAD_TO_DEG;
+#else // Eq. 28 and 29
+  double roll  = atan(accY / sqrt(accX * accX + accZ * accZ)) * RAD_TO_DEG;
+  double pitch = atan2(-accX, accZ) * RAD_TO_DEG;
+#endif
+
   kalmanX.setAngle(roll); // Set starting angle
   kalmanY.setAngle(pitch);
   gyroXangle = roll;
   gyroYangle = pitch;
   compAngleX = roll;
   compAngleY = pitch;
+
   timer = micros();
 }
 
@@ -337,111 +267,39 @@ void motorControl(int pwm1, int pwm2, int dir1, int dir2) {
 }
 
 void loop() {
-<<<<<<< HEAD
-  if(Serial.available()>0){
-    //Serial.print("has serial");
-    //digitalWrite(8,HIGH);
-    receive_info();
-   }
   digitalWrite(5, LOW);
-  
-  // =========================================== 1. setpoint pid control =========================================== //
-  current_speed = motor_speed * A_trend_first;
-=======
-  digitalWrite(5, LOW);
-  if (Serial.available()) {
-    receive_info();
-   }
-  digitalWrite(5, LOW);
-  // =========================================== 1. FSM state actions ============================================== //
-  if (gesture_state == idle) {
-    if (target_speed > 0) {
-      target_speed = max(0, target_speed - 0.001);
-    } else {
-      target_speed = min(0, target_speed + 0.001);
-    }
-  }
-  if (gesture_state == forward) {
-    target_speed = min(0.5, target_speed + 0.001);
-  }
-  if (gesture_state == backup) {
-    target_speed = max(-0.5, target_speed - 0.001);
-  }
-  if (gesture_state == left_turn) {
-    target_speed = max(-0.5, target_speed - 0.001);
-    factor1 = 0.8;
-    factor2 = 1.3;
-    toggle = false;
-  }
-  if (gesture_state == right_turn){
-    target_speed = max(-0.5, target_speed - 0.001);
-    factor1 = 1.3;
-    factor2 = 0.8;
-    toggle = true;
-  }
-  // ========================================= 2. FSM state transitions ============================================ //
-//  if ((gesture_state == idle) && (command == forward)) {
-//    gesture_state = forward;
-//  }
-//  if ((gesture_state == idle) && (command == backup)) {
-//    gesture_state = backup;
-//  }
-//  if ((gesture_state == forward) && (command == idle)) {
-//    gesture_state = idle;
-//  }
-//  if ((gesture_state == forward) && (command == backup)) {
-//    gesture_state = backup;
-//  }
-//  if ((gesture_state == backup) && (command == idle)) {
-//    gesture_state = idle;
-//  }
-//  if ((gesture_state == backup) && (command == forward)) {
-//    gesture_state = forward;
-//  }
-  gesture_state = command;
-  
-  if (1) {
-    Serial.print(gesture_state);Serial.print("   ");
-    Serial.println(target_speed);
-  }
-  // =========================================== 3. setpoint pid control =========================================== //
-  if (!toggle) {
-    current_speed = motor_speed * A_trend_first;
-  } else {
-    current_speed = motor_speed2 * A_trend_first;
-  }  
->>>>>>> Bob's_branch
-  speed_error = -(current_speed - target_speed);
-  delta_speed_error = speed_error - last_speed_error;
-  speed_error_sum = speed_error_sum + speed_error;
-  target_angle = starting_bias + sp_Kp * speed_error + sp_Kd * delta_speed_error + sp_Ki * speed_error_sum;
-  if (target_angle > 20) {target_angle = 20;speed_error_sum -= speed_error;}
-  else if (target_angle< -20) {target_angle = -20;speed_error_sum -= speed_error;} 
-  last_speed_error = speed_error;
-  if (1) {
-    Serial.print("  current speed =");Serial.print(current_speed);
-    Serial.print("  current setpoint =");Serial.println(target_angle);
-  }
+  Serial.print(motor_speed * A_trend_first);
+  Serial.print(' ');
+  Serial.println(motor_speed2 * A_trend_first2);
   digitalWrite(5, HIGH);
-  
-<<<<<<< HEAD
-  // =========================================== 2. update sensor data ============================================== //
-=======
-  // =========================================== 4. update sensor data ============================================== //
->>>>>>> Bob's_branch
+  /* Update all the values */
   while (i2cRead(0x3B, i2cData, 14));
   accX = ((i2cData[0] << 8) | i2cData[1]);
   accY = ((i2cData[2] << 8) | i2cData[3]);
   accZ = ((i2cData[4] << 8) | i2cData[5]);
+  //tempRaw = (i2cData[6] << 8) | i2cData[7];
   gyroX = (i2cData[8] << 8) | i2cData[9];
   gyroY = (i2cData[10] << 8) | i2cData[11];
   gyroZ = (i2cData[12] << 8) | i2cData[13];
+
   double dt = (double)(micros() - timer) / 1000000; // Calculate delta time
   timer = micros();
+
+  // Source: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf eq. 25 and eq. 26
+  // atan2 outputs the value of -π to π (radians) - see http://en.wikipedia.org/wiki/Atan2
+  // It is then converted from radians to degrees
+#ifdef RESTRICT_PITCH // Eq. 25 and 26
   double roll  = atan2(accY, accZ) * RAD_TO_DEG;
   double pitch = atan(-accX / sqrt(accY * accY + accZ * accZ)) * RAD_TO_DEG;
+#else // Eq. 28 and 29
+  double roll  = atan(accY / sqrt(accX * accX + accZ * accZ)) * RAD_TO_DEG;
+  double pitch = atan2(-accX, accZ) * RAD_TO_DEG;
+#endif
+
   double gyroXrate = gyroX / 131.0; // Convert to deg/s
   double gyroYrate = gyroY / 131.0; // Convert to deg/s
+
+#ifdef RESTRICT_PITCH
   // This fixes the transition problem when the accelerometer angle jumps between -180 and 180 degrees
   if ((roll < -90 && kalAngleX > 90) || (roll > 90 && kalAngleX < -90)) {
     kalmanX.setAngle(roll);
@@ -450,61 +308,87 @@ void loop() {
     gyroXangle = roll;
   } else
     kalAngleX = kalmanX.getAngle(roll, gyroXrate, dt); // Calculate the angle using a Kalman filter
+
   if (abs(kalAngleX) > 90)
     gyroYrate = -gyroYrate; // Invert rate, so it fits the restriced accelerometer reading
   kalAngleY = kalmanY.getAngle(pitch, gyroYrate, dt);
+#else
+  // This fixes the transition problem when the accelerometer angle jumps between -180 and 180 degrees
+  if ((pitch < -90 && kalAngleY > 90) || (pitch > 90 && kalAngleY < -90)) {
+    kalmanY.setAngle(pitch);
+    compAngleY = pitch;
+    kalAngleY = pitch;
+    gyroYangle = pitch;
+  } else
+    kalAngleY = kalmanY.getAngle(pitch, gyroYrate, dt); // Calculate the angle using a Kalman filter
+
+  if (abs(kalAngleY) > 90)
+    gyroXrate = -gyroXrate; // Invert rate, so it fits the restriced accelerometer reading
+  kalAngleX = kalmanX.getAngle(roll, gyroXrate, dt); // Calculate the angle using a Kalman filter
+#endif
+
   gyroXangle += gyroXrate * dt; // Calculate gyro angle without any filter
   gyroYangle += gyroYrate * dt;
+  //gyroXangle += kalmanX.getRate() * dt; // Calculate gyro angle using the unbiased rate
+  //gyroYangle += kalmanY.getRate() * dt;
+
   compAngleX = 0.93 * (compAngleX + gyroXrate * dt) + 0.07 * roll; // Calculate the angle using a Complimentary filter
   compAngleY = 0.93 * (compAngleY + gyroYrate * dt) + 0.07 * pitch;
+
   // Reset the gyro angle when it has drifted too much
   if (gyroXangle < -180 || gyroXangle > 180)
     gyroXangle = kalAngleX;
   if (gyroYangle < -180 || gyroYangle > 180)
     gyroYangle = kalAngleY;
-  /* Print Sensor Data */
-  if (0) { // Set to 1 to activate
-    Serial.print(accX); Serial.print("\t");
-    Serial.print(accY); Serial.print("\t");
-    Serial.print(accZ); Serial.print("\t");
-    Serial.print(gyroX); Serial.print("\t");
-    Serial.print(gyroY); Serial.print("\t");
-    Serial.print(gyroZ); Serial.print("\t");
-    Serial.println();
-  }
 
-<<<<<<< HEAD
-  // =========================================== 3. angle pid control ============================================== //
-=======
-  // =========================================== 5. angle pid control ============================================== //
->>>>>>> Bob's_branch
+  /* Print Data */
+#if 0 // Set to 1 to activate
+  Serial.print(accX); Serial.print("\t");
+  Serial.print(accY); Serial.print("\t");
+  Serial.print(accZ); Serial.print("\t");
+
+  Serial.print(gyroX); Serial.print("\t");
+  Serial.print(gyroY); Serial.print("\t");
+  Serial.print(gyroZ); Serial.print("\t");
+
+  Serial.print("\t");
+#endif
+
+  //Serial.print(roll); Serial.print("\t");
+  //Serial.print(gyroXangle); Serial.print("\t");
+  //Serial.print(compAngleX); Serial.print("\t");
+  
   robot_angle = kalAngleX;
+  //Serial.print(robot_angle); Serial.print("\t");
   error = robot_angle - target_angle;
+  integrated_error += error;
+  if (integrated_error > 255) integrated_error = 255;
+  if (integrated_error < -255) integrated_error = -255;
   delta_error = error - last_error;
-  integrated_error += error;  
-  control_decision = int(Kp*error+Kd*delta_error+Ki*integrated_error);  
-  if (control_decision > 255) {control_decision = 255;integrated_error -= error;}
-  else if (control_decision< -255) {control_decision = -255;integrated_error -= error;}  
+  control_decision = int(Kp*error+Kd*delta_error+Ki*integrated_error);
+  Serial.println(control_decision); Serial.print("\t");
   if (control_decision > 0){
-<<<<<<< HEAD
     motorControl(control_decision, control_decision,1,1);
-    //motorControl(int(control_decision*0.8), int(control_decision*1.2),1,1);
-  } else {
+    }else{
     motorControl(-control_decision, -control_decision, 2,2);
-    //motorControl(-int(control_decision*0.8), -int(control_decision*1.2),2,2);
-=======
-    motorControl(control_decision * factor1, control_decision * factor2,1,1);
-  } else {
-    motorControl(-control_decision * factor1, -control_decision * factor2, 2,2);
->>>>>>> Bob's_branch
-  }
+      }
   last_error = error;
-  if (0) { // set to 1 to activate
-    Serial.print("  robot_angle=");Serial.println(robot_angle);
-    Serial.print("  control decision=");Serial.println(control_decision);
-  }
-<<<<<<< HEAD
-=======
+  
+  
+
+  //Serial.print("\t");
+
+  //Serial.print(pitch); Serial.print("\t");
+  //Serial.print(gyroYangle); Serial.print("\t");
+  //Serial.print(compAngleY); Serial.print("\t");
+  //Serial.print(kalAngleY); Serial.print("\t");
+
+#if 0 // Set to 1 to print the temperature
+  Serial.print("\t");
+
+  double temperature = (double)tempRaw / 340.0 + 36.53;
+  Serial.print(temperature); Serial.print("\t");
+  Serial.print("\r\n");
+#endif
   //delay(2);
->>>>>>> Bob's_branch
 }
