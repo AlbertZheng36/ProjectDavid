@@ -23,7 +23,7 @@ int test = 6;
 
 // angle PID control definitions
 double current_angle = 0;
-double target_angle = 7;
+double target_angle = 6.5;
 double error = 0;
 double last_error = 0;
 double delta_error = 0;
@@ -42,23 +42,21 @@ double speed_error_sum = 0;
 double sp_Kp = 5;
 double sp_Kd = 0.5;
 double sp_Ki = 0;
-double starting_bias = 7;
+double starting_bias = 6.5;
 
 // other definitions
 int p1, p2;
 double robot_angle;
 int control_decision = 0;
+double factor1 = 1;
+double factor2 = 1;
+bool toggle = false;
 
-<<<<<<< HEAD
-=======
-
-//info
-enum state {idle,forward_drive, backup, left_turn,right_turn};
+// receive info
+enum state {idle,forward, backup, left_turn,right_turn};
 state gesture_state = idle;
-int turning_speed;
-bool should_catapult;
+state command = idle;
 
->>>>>>> 206c86daf8a79e890468a8966aa9a831e7c4b4e7
 //========================================== don't see this section ===========================================//
 // volatile interrupt data
 volatile double motor_speed = 0;
@@ -162,72 +160,22 @@ void enB_fall_ISR2() {
 void timeOut2Handler() {
   if (micros() - last_time2 > 5000) motor_speed2 = 0;
 }
-
 // ========================================= don't see above section =======================================//
 
-<<<<<<< HEAD
-
-void setup() {
-  Serial.begin(115200);
-=======
 void receive_info() {
-   String command1 =  Serial.readStringUntil('#');
-   Serial.print("after somdthing");
-   char command[30];
-   command1.toCharArray(command, 30);
-   char *parseChar1; // For state
-   char *parseChar2; // For turning_speed
-   char *parseChar3; // For catapult
-   char *parseChar4; // For the last null
-   parseChar1 = strtok(command, " ");
-   parseChar2 = strtok(NULL, " ");
-   parseChar3 = strtok(NULL, " ");
-   parseChar4 = strtok(NULL, " ");
-   /* Integrety checking */
-   int cur_state = atoi(parseChar1) - 1;
-   int cur_speed = atoi(parseChar2);
-   int cur_cata = atoi(parseChar3) - 1;
-   
-   if (cur_state < 0 || cur_state > (right_turn + 1)) {
-    //Serial.println("Fail state");
+  int raw_command = Serial.read() - 49;
+  // Integrity checking
+  if (raw_command < idle || raw_command > right_turn) {
+    Serial.print("Fail state");
     return;
-   }
-   if (cur_cata < 0 || cur_cata > 1) {
-    //Serial.println("Fail cata");
-    return;
-   }
-   if (!parseChar2 || !parseChar3 || parseChar4) {
-    //Serial.println("Fail token number");
-    return;
-   }
-   
-   gesture_state = (state)cur_state;
-   turning_speed = cur_speed;
-   should_catapult = (cur_cata > 0);
-   //Serial.println(command1);
-   //Serial.println(gesture_state);
-   //Serial.println(turning_speed);
-   //Serial.println(should_catapult);
-   
-    
-
-   
-   //int int_command1 = command1.toInt();
-   //String command2 = Serial.readStringUntil(' ');
-   //int int_command2 = command2.toInt();
-   //String command3 = Serial.readStringUntil('#');
-   //int int_command3 = command3.toInt();
-   //Serial.println("Command: ");
-   //Serial.println(int_command1);
-   //Serial.println(int_command2);
-   //Serial.println(int_command3);
-   
-  
+  }
+  command = (state)raw_command;
+  Serial.print(command);
 }
+
 void setup() {
   Serial.begin(115200);
   digitalWrite(8,LOW);
->>>>>>> 206c86daf8a79e890468a8966aa9a831e7c4b4e7
   pinMode(21, OUTPUT);
   pinMode(12, OUTPUT);
   pinMode(13, OUTPUT);
@@ -311,19 +259,68 @@ void motorControl(int pwm1, int pwm2, int dir1, int dir2) {
 }
 
 void loop() {
-<<<<<<< HEAD
   digitalWrite(5, LOW);
-=======
-  if(Serial.available()>0){
-    //Serial.print("has serial");
-    //digitalWrite(8,HIGH);
+  if (Serial.available()) {
     receive_info();
    }
   digitalWrite(5, LOW);
+  // =========================================== 1. FSM state actions ============================================== //
+  if (gesture_state == idle) {
+    if (target_speed > 0) {
+      target_speed = max(0, target_speed - 0.001);
+    } else {
+      target_speed = min(0, target_speed + 0.001);
+    }
+  }
+  if (gesture_state == forward) {
+    target_speed = min(0.5, target_speed + 0.001);
+  }
+  if (gesture_state == backup) {
+    target_speed = max(-0.5, target_speed - 0.001);
+  }
+  if (gesture_state == left_turn) {
+    target_speed = max(-0.5, target_speed - 0.001);
+    factor1 = 0.8;
+    factor2 = 1.3;
+    toggle = false;
+  }
+  if (gesture_state == right_turn){
+    target_speed = max(-0.5, target_speed - 0.001);
+    factor1 = 1.3;
+    factor2 = 0.8;
+    toggle = true;
+  }
+  // ========================================= 2. FSM state transitions ============================================ //
+//  if ((gesture_state == idle) && (command == forward)) {
+//    gesture_state = forward;
+//  }
+//  if ((gesture_state == idle) && (command == backup)) {
+//    gesture_state = backup;
+//  }
+//  if ((gesture_state == forward) && (command == idle)) {
+//    gesture_state = idle;
+//  }
+//  if ((gesture_state == forward) && (command == backup)) {
+//    gesture_state = backup;
+//  }
+//  if ((gesture_state == backup) && (command == idle)) {
+//    gesture_state = idle;
+//  }
+//  if ((gesture_state == backup) && (command == forward)) {
+//    gesture_state = forward;
+//  }
+  gesture_state = command;
   
->>>>>>> 206c86daf8a79e890468a8966aa9a831e7c4b4e7
-  // =========================================== 1. setpoint pid control =========================================== //
-  current_speed = motor_speed * A_trend_first;
+  if (1) {
+    Serial.print(gesture_state);Serial.print("   ");
+    Serial.println(target_speed);
+  }
+  // =========================================== 3. setpoint pid control =========================================== //
+  if (!toggle) {
+    current_speed = motor_speed * A_trend_first;
+  } else {
+    current_speed = motor_speed2 * A_trend_first;
+  }  
   speed_error = -(current_speed - target_speed);
   delta_speed_error = speed_error - last_speed_error;
   speed_error_sum = speed_error_sum + speed_error;
@@ -337,7 +334,7 @@ void loop() {
   }
   digitalWrite(5, HIGH);
   
-  // =========================================== 2. update sensor data ============================================== //
+  // =========================================== 4. update sensor data ============================================== //
   while (i2cRead(0x3B, i2cData, 14));
   accX = ((i2cData[0] << 8) | i2cData[1]);
   accY = ((i2cData[2] << 8) | i2cData[3]);
@@ -382,7 +379,7 @@ void loop() {
     Serial.println();
   }
 
-  // =========================================== 3. angle pid control ============================================== //
+  // =========================================== 5. angle pid control ============================================== //
   robot_angle = kalAngleX;
   error = robot_angle - target_angle;
   delta_error = error - last_error;
@@ -391,15 +388,14 @@ void loop() {
   if (control_decision > 255) {control_decision = 255;integrated_error -= error;}
   else if (control_decision< -255) {control_decision = -255;integrated_error -= error;}  
   if (control_decision > 0){
-    motorControl(control_decision, control_decision,1,1);
-    //motorControl(int(control_decision*0.8), int(control_decision*1.2),1,1);
+    motorControl(control_decision * factor1, control_decision * factor2,1,1);
   } else {
-    motorControl(-control_decision, -control_decision, 2,2);
-    //motorControl(-int(control_decision*0.8), -int(control_decision*1.2),2,2);
+    motorControl(-control_decision * factor1, -control_decision * factor2, 2,2);
   }
   last_error = error;
   if (0) { // set to 1 to activate
     Serial.print("  robot_angle=");Serial.println(robot_angle);
     Serial.print("  control decision=");Serial.println(control_decision);
   }
+  //delay(2);
 }
