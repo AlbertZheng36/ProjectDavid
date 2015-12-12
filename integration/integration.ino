@@ -53,7 +53,7 @@ double factor2 = 1;
 bool toggle = false;
 
 // receive info
-enum state {idle,forward, backup, left_turn,right_turn};
+enum state {idle,catapult,forward, backup, left_turn,right_turn};
 state gesture_state = idle;
 state command = idle;
 
@@ -164,6 +164,24 @@ void timeOut2Handler() {
 
 void receive_info() {
   int raw_command = Serial.read() - 49;
+  // Tuning starting_bias
+  float first;
+  float second;
+  if (raw_command == 7) {
+    first = Serial.read() - 48;
+    second = Serial.read() - 48;
+    starting_bias = - first - second / 10;
+    Serial.print(starting_bias);
+    return;
+  }
+  if (raw_command == 8) {
+    first = Serial.read() - 48;
+    second = Serial.read() - 48;
+    starting_bias = first + second / 10;
+    Serial.print(starting_bias);
+    return;
+  }
+
   // Integrity checking
   if (raw_command < idle || raw_command > right_turn) {
     Serial.print("Fail state");
@@ -311,7 +329,7 @@ void loop() {
 //  }
   gesture_state = command;
   
-  if (1) {
+  if (0) {
     Serial.print(gesture_state);Serial.print("   ");
     Serial.println(target_speed);
   }
@@ -328,7 +346,7 @@ void loop() {
   if (target_angle > 20) {target_angle = 20;speed_error_sum -= speed_error;}
   else if (target_angle< -20) {target_angle = -20;speed_error_sum -= speed_error;} 
   last_speed_error = speed_error;
-  if (1) {
+  if (0) {
     Serial.print("  current speed =");Serial.print(current_speed);
     Serial.print("  current setpoint =");Serial.println(target_angle);
   }
