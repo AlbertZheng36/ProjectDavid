@@ -3,6 +3,10 @@
 #include <DueTimer.h>
 Kalman kalmanX; // Create the Kalman instances
 Kalman kalmanY;
+#include <Servo.h>
+//Servo Command
+int servoPin = 9;
+Servo cataServo;
 
 // Sensor definitions
 int16_t accX, accY, accZ;
@@ -23,12 +27,12 @@ int test = 6;
 
 // angle PID control definitions
 double current_angle = 0;
-double target_angle = 6.5;
+double target_angle = -1;
 double error = 0;
 double last_error = 0;
 double delta_error = 0;
 double integrated_error = 0;
-double Kp = 25;
+double Kp = 30;
 double Kd = 350;
 double Ki = 0.5;
 
@@ -42,7 +46,7 @@ double speed_error_sum = 0;
 double sp_Kp = 5;
 double sp_Kd = 0.5;
 double sp_Ki = 0;
-double starting_bias = 6.5;
+double starting_bias = -1;
 
 // other definitions
 int p1, p2;
@@ -51,11 +55,13 @@ int control_decision = 0;
 double factor1 = 1;
 double factor2 = 1;
 bool toggle = false;
+long cataTimer = 0;
 
 // receive info
-enum state {idle,catapult,forward, backup, left_turn,right_turn};
-state gesture_state = idle;
-state command = idle;
+enum state {idle, forward, backup, left_turn, right_turn, catapult};
+state gesture_state = catapult;
+state command = catapult;
+state preState = idle;
 
 //========================================== don't see this section ===========================================//
 // volatile interrupt data
@@ -193,12 +199,14 @@ void receive_info() {
 
 void setup() {
   Serial.begin(115200);
-  digitalWrite(8,LOW);
+  digitalWrite(8, LOW);
   pinMode(21, OUTPUT);
   pinMode(12, OUTPUT);
   pinMode(13, OUTPUT);
   pinMode(10, OUTPUT);
   pinMode(11, OUTPUT);
+  cataServo.attach(servoPin);
+  cataServo.write(0);
   for (int i = 0; i < 8; i++) {
     digitalWrite(21, HIGH);
     delayMicroseconds(3);
@@ -247,8 +255,8 @@ void setup() {
 }
 
 void motorControl(int pwm1, int pwm2, int dir1, int dir2) {
-  p1 = max(min(pwm1, 255),0);
-  p2 = max(min(pwm2, 255),0);
+  p1 = max(min(pwm1, 255), 0);
+  p2 = max(min(pwm2, 255), 0);
   if (dir1 == 0) {
     digitalWrite(dirA, LOW);
   }
@@ -280,21 +288,35 @@ void loop() {
   digitalWrite(5, LOW);
   if (Serial.available()) {
     receive_info();
-   }
+  }
   digitalWrite(5, LOW);
+
   // =========================================== 1. FSM state actions ============================================== //
+  if (gesture_state == catapult) {
+    cataServo.write(30);
+    cataTimer += 1;
+    factor1 = 1;
+    factor2 = 1;
+  }
+
   if (gesture_state == idle) {
     if (target_speed > 0) {
       target_speed = max(0, target_speed - 0.001);
     } else {
       target_speed = min(0, target_speed + 0.001);
     }
+    factor1 = 1;
+    factor2 = 1;
   }
   if (gesture_state == forward) {
     target_speed = min(0.5, target_speed + 0.001);
+    factor1 = 1;
+    factor2 = 1;
   }
   if (gesture_state == backup) {
     target_speed = max(-0.5, target_speed - 0.001);
+    factor1 = 1;
+    factor2 = 1;
   }
   if (gesture_state == left_turn) {
     target_speed = max(-0.5, target_speed - 0.001);
@@ -302,56 +324,59 @@ void loop() {
     factor2 = 1.3;
     toggle = false;
   }
-  if (gesture_state == right_turn){
+  if (gesture_state == right_turn) {
     target_speed = max(-0.5, target_speed - 0.001);
     factor1 = 1.3;
     factor2 = 0.8;
     toggle = true;
   }
   // ========================================= 2. FSM state transitions ============================================ //
-//  if ((gesture_state == idle) && (command == forward)) {
-//    gesture_state = forward;
-//  }
-//  if ((gesture_state == idle) && (command == backup)) {
-//    gesture_state = backup;
-//  }
-//  if ((gesture_state == forward) && (command == idle)) {
-//    gesture_state = idle;
-//  }
-//  if ((gesture_state == forward) && (command == backup)) {
-//    gesture_state = backup;
-//  }
-//  if ((gesture_state == backup) && (command == idle)) {
-//    gesture_state = idle;
-//  }
-//  if ((gesture_state == backup) && (command == forward)) {
-//    gesture_state = forward;
-//  }
-  gesture_state = command;
-  
-  if (0) {
-    Serial.print(gesture_state);Serial.print("   ");
-    Serial.println(target_speed);
+  if (gesture_state == catapult && cataTimer >= 250) {
+    gesture_state = preState;
+    cataTimer = 0;
+    cataServo.write(0);
+    command = preState;
   }
+  if (gesture_state != command) {
+    if (gesture_state == catapult) {
+      cataTimer = 0;
+      cataServo.write(0);
+    }
+    preState = gesture_state;
+    gesture_state = command;
+  }
+  if (0) {
+    Serial.print(gesture_state); Serial.print("   ");
+    Serial.print(cataTimer);
+    Serial.print("  now previous state=");
+    Serial.println(preState);
+  }
+
   // =========================================== 3. setpoint pid control =========================================== //
   if (!toggle) {
     current_speed = motor_speed * A_trend_first;
   } else {
     current_speed = motor_speed2 * A_trend_first;
-  }  
+  }
   speed_error = -(current_speed - target_speed);
   delta_speed_error = speed_error - last_speed_error;
   speed_error_sum = speed_error_sum + speed_error;
   target_angle = starting_bias + sp_Kp * speed_error + sp_Kd * delta_speed_error + sp_Ki * speed_error_sum;
-  if (target_angle > 20) {target_angle = 20;speed_error_sum -= speed_error;}
-  else if (target_angle< -20) {target_angle = -20;speed_error_sum -= speed_error;} 
+  if (target_angle > 20) {
+    target_angle = 20;
+    speed_error_sum -= speed_error;
+  }
+  else if (target_angle < -20) {
+    target_angle = -20;
+    speed_error_sum -= speed_error;
+  }
   last_speed_error = speed_error;
-  if (0) {
-    Serial.print("  current speed =");Serial.print(current_speed);
-    Serial.print("  current setpoint =");Serial.println(target_angle);
+  if (1) {
+    Serial.print("  current speed ="); Serial.print(current_speed);
+    Serial.print("  current setpoint ="); Serial.println(target_angle);
   }
   digitalWrite(5, HIGH);
-  
+
   // =========================================== 4. update sensor data ============================================== //
   while (i2cRead(0x3B, i2cData, 14));
   accX = ((i2cData[0] << 8) | i2cData[1]);
@@ -401,19 +426,25 @@ void loop() {
   robot_angle = kalAngleX;
   error = robot_angle - target_angle;
   delta_error = error - last_error;
-  integrated_error += error;  
-  control_decision = int(Kp*error+Kd*delta_error+Ki*integrated_error);  
-  if (control_decision > 255) {control_decision = 255;integrated_error -= error;}
-  else if (control_decision< -255) {control_decision = -255;integrated_error -= error;}  
-  if (control_decision > 0){
-    motorControl(control_decision * factor1, control_decision * factor2,1,1);
+  integrated_error += error;
+  control_decision = int(Kp * error + Kd * delta_error + Ki * integrated_error);
+  if (control_decision > 255) {
+    control_decision = 255;
+    integrated_error -= error;
+  }
+  else if (control_decision < -255) {
+    control_decision = -255;
+    integrated_error -= error;
+  }
+  if (control_decision > 0) {
+    motorControl(control_decision * factor1, control_decision * factor2, 1, 1);
   } else {
-    motorControl(-control_decision * factor1, -control_decision * factor2, 2,2);
+    motorControl(-control_decision * factor1, -control_decision * factor2, 2, 2);
   }
   last_error = error;
   if (0) { // set to 1 to activate
-    Serial.print("  robot_angle=");Serial.println(robot_angle);
-    Serial.print("  control decision=");Serial.println(control_decision);
+    Serial.print("  robot_angle="); Serial.println(robot_angle);
+    Serial.print("  control decision="); Serial.println(control_decision);
   }
   //delay(2);
 }
