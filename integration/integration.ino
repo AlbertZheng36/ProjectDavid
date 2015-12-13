@@ -65,12 +65,12 @@ state command = idle;
 state preState = idle;
 
 // servo info
-int servo_starting_position = 60;
+int servo_starting_position = 90;
 long cataTimer = 0;
-double servo_activation_angle_threshold = 8;
+double servo_activation_angle_threshold = 7;
 bool servo_ready_for_activation = true;
 int servo_target_position = servo_starting_position;
-int servo_p = 12;
+double servo_p = 1;
 int servo_return_position = servo_starting_position;
 
 //========================================== don't see this section ===========================================//
@@ -209,7 +209,7 @@ void receive_info() {
 
 void servo_activate(){
   //this function activates servo to be at a specific angle to help balance the robot
-  servo_target_position = servo_starting_position + servo_p * error;
+  servo_target_position = int(servo_starting_position - servo_p * error);
   cataServo.write(servo_target_position);
 }
  
@@ -315,15 +315,6 @@ void loop() {
   digitalWrite(5, LOW);
 
   // =========================================== 1. FSM state actions ============================================== //
-  /*
-  if (gesture_state == catapult) {
-    cataServo.write(30);
-    cataTimer += 1;
-    factor1 = 1;
-    factor2 = 1;
-  }
-  */
-
   if (gesture_state == idle) {
     if (target_speed > 0) {
       target_speed = max(0, target_speed - 0.001);
@@ -332,28 +323,33 @@ void loop() {
     }
     factor1 = 1;
     factor2 = 1;
+    cataServo.write(85 - servo_p*error);
   }
   if (gesture_state == forward) {
     target_speed = min(0.5, target_speed + 0.001);
     factor1 = 1;
     factor2 = 1;
+    cataServo.write(85);
   }
   if (gesture_state == backup) {
     target_speed = max(-0.5, target_speed - 0.001);
     factor1 = 1;
     factor2 = 1;
+    cataServo.write(85);
   }
   if (gesture_state == left_turn) {
     target_speed = max(-0.5, target_speed - 0.001);
     factor1 = 0.8;
     factor2 = 1.3;
     toggle = false;
+    cataServo.write(85);
   }
   if (gesture_state == right_turn) {
     target_speed = max(-0.5, target_speed - 0.001);
     factor1 = 1.3;
     factor2 = 0.8;
     toggle = true;
+    cataServo.write(85);
   }
   // ========================================= 2. FSM state transitions ============================================ //
   /*
@@ -481,25 +477,26 @@ void loop() {
   struggle to balance itself from 10 degrees. When the error angle exceeds an angle threshold, servo beam
   control will kick in and help balance the bot. After that, beam will slowly return to its original position waiting
   for activation again*/
-  if (abs(error) > servo_activation_angle_threshold && servo_ready_for_activation){
-    servo_activate();
-    servo_ready_for_activation = false;
-  }
-
-  if (!servo_ready_for_activation){
-    if (cataTimer < 250){
-      //increase cataTimer until 250
-      cataTimer += 1 ;
-    }else if(cataTimer >= 250 && cataTimer <= 750){
-      //cataTimer has been incremented to 250, servo will be deactivated, slowly returning to original position and ready for activation again
-      cataTimer += 1;
-      servo_deactivate(cataTimer);
-    }else if(cataTimer >= 750){
-      //should already be deactivated 
-      cataTimer = 0;
-      servo_ready_for_activation = true;
-    }
-    
-  }
+//  if (abs(error) > servo_activation_angle_threshold && servo_ready_for_activation){
+//    servo_activate();
+//    servo_ready_for_activation = false;
+//  }
+//
+//  if (!servo_ready_for_activation){
+//    if (cataTimer < 250){
+//      //increase cataTimer until 250
+//      cataTimer += 1 ;
+//    }else if(cataTimer >= 250 && cataTimer <= 750){
+//      //cataTimer has been incremented to 250, servo will be deactivated, slowly returning to original position and ready for activation again
+//      cataTimer += 1;
+//      servo_deactivate(cataTimer);
+//    }else if(cataTimer >= 750){
+//      //should already be deactivated 
+//      cataTimer = 0;
+//      servo_ready_for_activation = true;
+//    }
+//    
+//  }
+  
   
 }
