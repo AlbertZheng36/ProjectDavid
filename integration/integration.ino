@@ -55,13 +55,23 @@ int control_decision = 0;
 double factor1 = 1;
 double factor2 = 1;
 bool toggle = false;
-long cataTimer = 0;
+
+
 
 // receive info
 enum state {idle, forward, backup, left_turn, right_turn, catapult};
-state gesture_state = catapult;
-state command = catapult;
+state gesture_state = idle;
+state command = idle;
 state preState = idle;
+
+// servo info
+int servo_starting_position = 60;
+long cataTimer = 0;
+double servo_activation_angle_threshold = 8;
+bool servo_ready_for_activation = true;
+int servo_target_position = servo_starting_position;
+int servo_p = 12;
+int servo_return_position = servo_starting_position;
 
 //========================================== don't see this section ===========================================//
 // volatile interrupt data
@@ -197,6 +207,19 @@ void receive_info() {
   Serial.print(command);
 }
 
+void servo_activate(){
+  //this function activates servo to be at a specific angle to help balance the robot
+  servo_target_position = servo_starting_position + servo_p * error;
+  cataServo.write(servo_target_position);
+}
+ 
+void servo_deactivate(int cataTimer){
+  //this function deactivates beam, this will be a slow change, called 500 times before servo is ready for action again 
+  //cataTimer goes from 250 to 750, at 250 we just begin deactivation servo_return = servo_target_position
+  //, at 750 we should have returned to servo_starting_position
+  servo_return_position = int (servo_target_position - (servo_target_position - servo_starting_position)*(cataTimer-250)/500.0); 
+  cataServo.write(servo_return_position);
+}
 void setup() {
   Serial.begin(115200);
   digitalWrite(8, LOW);
@@ -206,7 +229,7 @@ void setup() {
   pinMode(10, OUTPUT);
   pinMode(11, OUTPUT);
   cataServo.attach(servoPin);
-  cataServo.write(0);
+  cataServo.write(servo_starting_position);
   for (int i = 0; i < 8; i++) {
     digitalWrite(21, HIGH);
     delayMicroseconds(3);
@@ -292,12 +315,14 @@ void loop() {
   digitalWrite(5, LOW);
 
   // =========================================== 1. FSM state actions ============================================== //
+  /*
   if (gesture_state == catapult) {
     cataServo.write(30);
     cataTimer += 1;
     factor1 = 1;
     factor2 = 1;
   }
+  */
 
   if (gesture_state == idle) {
     if (target_speed > 0) {
@@ -331,12 +356,15 @@ void loop() {
     toggle = true;
   }
   // ========================================= 2. FSM state transitions ============================================ //
+  /*
   if (gesture_state == catapult && cataTimer >= 250) {
     gesture_state = preState;
     cataTimer = 0;
     cataServo.write(0);
     command = preState;
   }
+  */
+  
   if (gesture_state != command) {
     if (gesture_state == catapult) {
       cataTimer = 0;
@@ -446,5 +474,32 @@ void loop() {
     Serial.print("  robot_angle="); Serial.println(robot_angle);
     Serial.print("  control decision="); Serial.println(control_decision);
   }
-  //delay(2);
+  
+  // ======================================== 6. servo counter disturbance control ================================== // 
+  /*We would like to use servo beam to help balance our robot only when error angle is too large
+  For example, our robot is perfectly able to balance itself within a 5 degree range, however, it may
+  struggle to balance itself from 10 degrees. When the error angle exceeds an angle threshold, servo beam
+  control will kick in and help balance the bot. After that, beam will slowly return to its original position waiting
+  for activation again*/
+  if (abs(error) > servo_activation_angle_threshold && servo_ready_for_activation){
+    servo_activate();
+    servo_ready_for_activation = false;
+  }
+
+  if (!servo_ready_for_activation){
+    if (cataTimer < 250){
+      //increase cataTimer until 250
+      cataTimer += 1 ;
+    }else if(cataTimer >= 250 && cataTimer <= 750){
+      //cataTimer has been incremented to 250, servo will be deactivated, slowly returning to original position and ready for activation again
+      cataTimer += 1;
+      servo_deactivate(cataTimer);
+    }else if(cataTimer >= 750){
+      //should already be deactivated 
+      cataTimer = 0;
+      servo_ready_for_activation = true;
+    }
+    
+  }
+  
 }
